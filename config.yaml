@@ -1,0 +1,69 @@
+# Meeting Agent Configuration
+
+# STT Model Selection (auto-detected by default)
+stt:
+  model: "distil-large-v3"  # Options: tiny, base, small, medium, large-v3, distil-large-v3, large-v3-turbo
+  device: "cpu"  # Options: cpu, cuda
+  compute_type: "int8"  # Options: int8, float16, float32
+  language: null  # null for auto-detect, or specify: en, es, fr, etc.
+  vad_filter: true
+  word_timestamps: true
+
+# Speaker Diarization
+diarization:
+  enabled: true
+  min_speakers: null  # null for auto-detect
+  max_speakers: null
+
+# LLM Provider
+llm:
+  provider: "anthropic"  # Options: anthropic, openai, ollama
+  model: "claude-3-5-haiku-20241022"  # or gpt-4o-mini, llama3, etc.
+  temperature: 0.3
+  max_tokens: 4000
+
+# API Keys (or use environment variables)
+api_keys:
+  anthropic: ${ANTHROPIC_API_KEY}
+  openai: ${OPENAI_API_KEY}
+  huggingface: ${HF_TOKEN}  # Required for pyannote
+
+# Storage
+storage:
+  database: "sqlite:///meetings.db"
+  
+# Integrations
+integrations:
+  notion:
+    enabled: false
+    token: ${NOTION_TOKEN}
+    database_id: ${NOTION_DATABASE_ID}
+  
+  obsidian:
+    enabled: false
+    vault_path: "~/Documents/Obsidian/Meetings"
+  
+  email:
+    enabled: true
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_APP_PASSWORD}
+    from_address: ${EMAIL_FROM}
+
+# Processing
+processing:
+  audio_sample_rate: 16000
+  audio_channels: 1
+  vad_threshold: 0.5
+  
+# Background Tasks
+celery:
+  broker_url: "redis://localhost:6379/0"
+  result_backend: "redis://localhost:6379/0"
+
+# API Server
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false

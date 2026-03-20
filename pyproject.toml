@@ -1,7 +1,63 @@
 [project]
 name = "meeting-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered meeting transcription and intelligence agent"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    # Capture layer
+    "sounddevice>=0.5.0",
+    "ffmpeg-python>=0.2.0",
+    "soundcard>=0.4.2",
+    "pydub>=0.25.1",
+    
+    # STT + diarization
+    "faster-whisper>=1.0.0",
+    "pyannote-audio>=3.1.0",
+    
+    # Intelligence layer
+    "langchain>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-anthropic>=0.1.0",
+    "langchain-openai>=0.0.5",
+    "pydantic>=2.0.0",
+    
+    # Storage
+    "sqlmodel>=0.0.14",
+    
+    # Delivery
+    "jinja2>=3.1.0",
+    "aiosmtplib>=3.0.0",
+    
+    # API + background tasks
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+    
+    # CLI
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    
+    # Utils
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+notion = ["notion-client>=2.2.0"]
+ollama = ["ollama>=0.1.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0"
+]
+
+[project.scripts]
+meeting-agent = "cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

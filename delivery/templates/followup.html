@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Base & Reset */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        
+        /* Main Container */
+        .email-container {
+            max-width: 680px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Sleek Modern Header */
+        .header {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            color: #ffffff;
+            padding: 40px;
+            text-align: left;
+            border-bottom: 4px solid #4f46e5;
+        }
+        .header h1 {
+            margin: 0 0 16px 0;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .header .meta {
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        /* Content Sections */
+        .content-body {
+            padding: 40px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section:last-child {
+            margin-bottom: 0;
+        }
+        .section h2 {
+            color: #4b5563;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        
+        /* Summary Text */
+        .summary-text {
+            font-size: 16px;
+            color: #374151;
+            line-height: 1.7;
+        }
+
+        /* Key Points List */
+        .key-points {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .key-points li {
+            padding: 12px 0 12px 32px;
+            position: relative;
+            font-size: 15px;
+            color: #374151;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .key-points li:last-child {
+            border-bottom: none;
+        }
+        .key-points li:before {
+            content: "✦";
+            position: absolute;
+            left: 0;
+            top: 12px;
+            color: #4f46e5;
+            font-size: 14px;
+        }
+
+        /* Action Items */
+        .action-item {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease;
+        }
+        .action-item .task {
+            font-weight: 600;
+            font-size: 16px;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        .action-item .meta {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .action-item .context {
+            margin-top: 12px;
+            font-size: 14px;
+            color: #4b5563;
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        /* Priority Colors */
+        .priority-high {
+            border-left: 4px solid #ef4444;
+        }
+        .priority-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        .priority-low {
+            border-left: 4px solid #10b981;
+        }
+
+        /* Decisions Box */
+        .decision {
+            background: #fdfaf4;
+            border: 1px solid #fde68a;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+        }
+        .decision .title {
+            font-weight: 600;
+            color: #92400e;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .decision .rationale {
+            font-size: 14px;
+            color: #b45309;
+            margin-bottom: 12px;
+        }
+        .decision .participants {
+            font-size: 12px;
+            color: #d97706;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px 40px;
+            font-size: 13px;
+            color: #9ca3af;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* Mobile Responsiveness */
+        @media only screen and (max-width: 600px) {
+            body { padding: 10px; }
+            .header, .content-body, .footer { padding: 24px; }
+            .header h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <div class="meta">
+                <span>📅 {{ date }}</span>
+                <span>•</span>
+                <span>⏱️ {{ duration }} minutes</span>
+                <span>•</span>
+                <span>👥 {{ participants|join(', ') }}</span>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div class="section">
+                <h2>Summary</h2>
+                <p class="summary-text">{{ summary }}</p>
+            </div>
+
+            <div class="section">
+                <h2>Key Points</h2>
+                <ul class="key-points">
+                    {% for point in key_points %}
+                    <li>{{ point }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Action Items</h2>
+                {% for item in action_items %}
+                <div class="action-item priority-{{ item.priority }}">
+                    <div class="task">{{ item.task }}</div>
+                    <div class="meta">
+                        {% if item.owner %}👤 {{ item.owner }}{% endif %}
+                        {% if item.deadline %}&nbsp;&nbsp;|&nbsp;&nbsp;📅 {{ item.deadline }}{% endif %}
+                        &nbsp;&nbsp;|&nbsp;&nbsp;Priority: <strong>{{ item.priority|upper }}</strong>
+                    </div>
+                    <div class="context">{{ item.context }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if decisions %}
+            <div class="section">
+                <h2>Decisions Made</h2>
+                {% for decision in decisions %}
+                <div class="decision">
+                    <div class="title">{{ decision.decision }}</div>
+                    <div class="rationale">{{ decision.rationale }}</div>
+                    {% if decision.participants %}
+                    <div class="participants">
+                        👥 Participants: {{ decision.participants|join(', ') }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            Generated by Meeting Agent | {{ processed_at }}
+        </div>
+    </div>
+</body>
+</html>

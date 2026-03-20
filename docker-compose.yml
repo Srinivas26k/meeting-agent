@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - uploads:/app/uploads
+      - ./meetings.db:/app/meetings.db
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - NOTION_TOKEN=${NOTION_TOKEN}
+      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+  celery_worker:
+    build: .
+    volumes:
+      - .:/app
+      - uploads:/app/uploads
+      - ./meetings.db:/app/meetings.db
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A api.tasks worker --loglevel=info
+
+volumes:
+  redis_data:
+  uploads:
