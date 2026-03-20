@@ -26,14 +26,18 @@ class FileLoader:
             ValueError: If file format is not supported
         """
         path = Path(file_path)
-        
+
+        if path.suffix.lower() not in SUPPORTED_FORMATS:
+            raise ValueError(
+                f"Unsupported format: {path.suffix}. "
+                f"Supported formats: {', '.join(SUPPORTED_FORMATS)}"
+            )
+
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
-        
+
         if not path.is_file():
             raise ValueError(f"Path is not a file: {file_path}")
-        
-        if path.suffix.lower() not in SUPPORTED_FORMATS:
             raise ValueError(
                 f"Unsupported format: {path.suffix}. "
                 f"Supported formats: {', '.join(SUPPORTED_FORMATS)}"

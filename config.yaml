@@ -1,13 +1,15 @@
 # Meeting Agent Configuration
 
-# STT Model Selection (auto-detected by default)
+# STT Model Selection
+# openai-whisper models: tiny, base, small, medium, large, turbo
+# tiny  ~39M params  - fastest, runs on any device
+# base  ~74M params  - good balance for low-end hardware
+# small ~244M params - better accuracy, still CPU-friendly
+# turbo ~809M params - best accuracy
 stt:
-  model: "distil-large-v3"  # Options: tiny, base, small, medium, large-v3, distil-large-v3, large-v3-turbo
-  device: "cpu"  # Options: cpu, cuda
-  compute_type: "int8"  # Options: int8, float16, float32
+  model: "tiny"   # Default: runs on any device
   language: null  # null for auto-detect, or specify: en, es, fr, etc.
-  vad_filter: true
-  word_timestamps: true
+  word_timestamps: false  # Set true for word-level timestamps (slower)
 
 # Speaker Diarization
 diarization:
