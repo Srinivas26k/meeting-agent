@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import os
 from intelligence.schemas import MeetingIntelligence
 

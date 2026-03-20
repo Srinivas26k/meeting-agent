@@ -1,7 +1,7 @@
 """Speaker diarization using pyannote-audio."""
 from pyannote.audio import Pipeline
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import os
 
 
