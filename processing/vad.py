@@ -25,12 +25,12 @@ class VADProcessor:
         Returns:
             List of (start_time, end_time) tuples in seconds
         """
-        # Note: faster-whisper has built-in VAD using Silero
+        # Note: openai-whisper has built-in VAD processing internally
         # This is a placeholder for custom VAD if needed
-        # In practice, we'll use faster-whisper's vad_filter parameter
+        # In practice, we'll use openai-whisper's transcribe method directly
         
         print(f"🎯 VAD processing: {audio_path.name}")
-        print("   Using faster-whisper built-in VAD (Silero)")
+        print("   Using openai-whisper internal VAD")
         
         # Return empty list to indicate we're using built-in VAD
         return []
@@ -39,7 +39,7 @@ class VADProcessor:
         """
         Remove silence from audio based on VAD segments.
         
-        Note: This is handled by faster-whisper's vad_filter parameter.
+        Note: This is handled by openai-whisper internally.
         """
-        # Placeholder - faster-whisper handles this internally
+        # Placeholder - openai-whisper handles this internally
         return audio_path

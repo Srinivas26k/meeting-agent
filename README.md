@@ -5,7 +5,7 @@ AI-powered meeting transcription and intelligence extraction system. Automatical
 ## Features
 
 - **Multi-source capture**: Record from microphone, screen, system audio, or upload files
-- **High-quality transcription**: Uses faster-whisper with distil-large-v3 for accurate, CPU-friendly transcription
+- **High-quality transcription**: Uses openai-whisper for accurate, highly-compatible transcription
 - **Speaker diarization**: Identifies who said what using pyannote-audio
 - **Intelligence extraction**: Automatically extracts summaries, action items, and decisions using LLMs
 - **Multiple outputs**: Save to SQLite, Notion, Obsidian, or send via email
@@ -398,7 +398,7 @@ Using Claude Haiku or GPT-4o-mini:
 ### "No module named 'faster_whisper'"
 
 ```bash
-pip install faster-whisper
+pip install openai-whisper
 ```
 
 ### "HuggingFace token required"
@@ -442,7 +442,7 @@ MIT License - see LICENSE file
 ## Credits
 
 Built with:
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) - STT
+- [openai-whisper](https://github.com/openai/whisper) - STT
 - [pyannote-audio](https://github.com/pyannote/pyannote-audio) - Diarization
 - [LangChain](https://github.com/langchain-ai/langchain) - LLM orchestration
 - [FastAPI](https://fastapi.tiangolo.com/) - API framework

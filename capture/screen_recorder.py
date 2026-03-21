@@ -31,6 +31,7 @@ class ScreenRecorder:
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
                 '-c:a', 'aac',
+                '-b:a', '192k',
                 '-y',
                 output_path
             ]
@@ -44,21 +45,25 @@ class ScreenRecorder:
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
                 '-c:a', 'aac',
+                '-b:a', '192k',
                 '-y',
                 output_path
             ]
         else:  # Linux
             # Linux: x11grab for screen, pulse for audio
+            import os
+            display = os.environ.get('DISPLAY', ':0.0')
             return [
                 'ffmpeg',
                 '-f', 'x11grab',
                 '-framerate', '30',
-                '-i', ':0.0',
+                '-i', display,
                 '-f', 'pulse',
                 '-i', 'default',
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
                 '-c:a', 'aac',
+                '-b:a', '192k',
                 '-y',
                 output_path
             ]

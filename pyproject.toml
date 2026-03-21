@@ -11,10 +11,9 @@ dependencies = [
     "soundcard>=0.4.2",
     "pydub>=0.25.1",
 
-    # ── STT — faster-whisper (NOT openai-whisper) ──────────────────────────
-    # CTranslate2 backend: 4-6x faster, int8 CPU quantization, VAD built-in.
-    # distil-large-v3 is the recommended default model.
-    "faster-whisper>=1.0.3",
+    # ── STT — openai-whisper ───────────────────────────────────────────────
+    # Official openai-whisper for maximum compatibility (using tiny model)
+    "openai-whisper",
 
     # ── hardware detection (for auto model selection) ──────────────────────
     "psutil>=5.9.0",

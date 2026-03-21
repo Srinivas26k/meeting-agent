@@ -220,7 +220,7 @@ docker-compose down
 ### "No module named 'faster_whisper'"
 
 ```bash
-pip install faster-whisper
+pip install openai-whisper
 ```
 
 ### "Could not load model"

@@ -153,7 +153,7 @@ class MeetingWidget:
         self.recording    = False
         self.mode         = tk.StringVar(value="screen")
         self.recorder     = None
-        self.timer_thread = None
+        self._timer_id    = None
         self.output_path  = None
         self.intelligence = None
         self._transcript_text_cache = None
@@ -444,7 +444,10 @@ class MeetingWidget:
                 self.recorder.start()
                 self.output_path = Path(f"recording_system_{ts}.wav")
         except Exception as ex:
-            messagebox.showerror("Recording Error", str(ex))
+            err_msg = str(ex)
+            if len(err_msg) > 150:
+                err_msg = err_msg[:150] + "...\n(Check terminal for full error)"
+            messagebox.showerror("Recording Error", err_msg)
             return
 
         self.recording = True
@@ -455,13 +458,22 @@ class MeetingWidget:
         self.sub_lbl.config(text="Recording in progress…")
         self._updated_lbl.config(text="live")
 
-        self.timer_thread = _TimerThread(self._tick_timer)
-        self.timer_thread.start()
+        self.recording_start_time = time.time()
+        self._update_timer_loop()
+
+    def _update_timer_loop(self):
+        if not self.recording:
+            return
+        elapsed = int(time.time() - self.recording_start_time)
+        m, s = divmod(elapsed, 60)
+        self.timer_lbl.config(text=f"{m:02d}:{s:02d}")
+        self._timer_id = self.root.after(1000, self._update_timer_loop)
 
     def _stop_recording(self):
         self.recording = False
-        if self.timer_thread:
-            self.timer_thread.stop()
+        if getattr(self, '_timer_id', None):
+            self.root.after_cancel(self._timer_id)
+            self._timer_id = None
         self._rec_dot.stop()
         try:
             if self.mode.get() == "screen":
@@ -480,9 +492,6 @@ class MeetingWidget:
         else:
             self.sub_lbl.config(text="Stopped")
         self._updated_lbl.config(text="just now")
-
-    def _tick_timer(self, val: str):
-        self.root.after(0, lambda: self.timer_lbl.config(text=val))
 
     # ── processing ────────────────────────────────────────────────────────────
 
@@ -580,7 +589,10 @@ class MeetingWidget:
         self._stop_progress_anim()
         self.progress_card.pack_forget()
         self._set_status(f"Error", RED)
-        messagebox.showerror("Processing failed", msg)
+        err_msg = str(msg)
+        if len(err_msg) > 150:
+            err_msg = err_msg[:150] + "...\n(Check terminal for full error)"
+        messagebox.showerror("Processing failed", err_msg)
 
     # ── transcript view ───────────────────────────────────────────────────────
 
@@ -734,26 +746,6 @@ class MeetingWidget:
 
     def run(self):
         self.root.mainloop()
-
-
-class _TimerThread(threading.Thread):
-    def __init__(self, cb):
-        super().__init__(daemon=True)
-        self.cb = cb
-        self._running = False
-
-    def run(self):
-        self._running = True
-        t0 = time.time()
-        while self._running:
-            e = int(time.time() - t0)
-            m, s = divmod(e, 60)
-            self.cb(f"{m:02d}:{s:02d}")
-            time.sleep(1)
-
-    def stop(self):
-        self._running = False
-
 
 def main():
     root = Path(__file__).parent.parent

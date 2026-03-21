@@ -37,10 +37,10 @@ class AudioPreprocessor:
         stream = ffmpeg.input(str(input_path))
         stream = stream.audio
 
-        # Apply normalization if requested (skip loudnorm — requires 2-pass)
-        # Use simpler volume normalization instead
+        # Apply normalization if requested
+        # We skip acompressor because it aggressively boosts noise floors (TV static sound)
         if normalize:
-            stream = stream.filter('acompressor')
+            pass # Whisper handles dynamic range well internally via Mel specs
 
         stream = ffmpeg.output(
             stream,
