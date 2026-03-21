@@ -6,19 +6,6 @@ from pathlib import Path
 from typing import Optional
 import time
 
-# Import our modules
-from capture.file_loader import FileLoader
-from capture.mic_recorder import MicRecorder
-from capture.screen_recorder import ScreenRecorder
-from capture.system_audio import SystemAudioRecorder
-from processing.preprocessor import AudioPreprocessor
-from processing.transcriber import Transcriber
-from processing.diarizer import Diarizer
-from intelligence.pipeline import IntelligencePipeline
-from storage.database import Database
-from delivery.email_sender import create_email_sender_from_config
-import yaml
-
 app = typer.Typer(help="Meeting Agent - AI-powered meeting transcription and intelligence")
 console = Console()
 
@@ -33,6 +20,12 @@ def process(
     console.print(f"\n[bold blue]🎯 Processing meeting recording...[/bold blue]\n")
     
     try:
+        from capture.file_loader import FileLoader
+        from processing.preprocessor import AudioPreprocessor
+        from processing.transcriber import Transcriber
+        from intelligence.pipeline import IntelligencePipeline
+        from storage.database import Database
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -62,6 +55,7 @@ def process(
             if not skip_diarization:
                 task = progress.add_task("Diarizing speakers...", total=None)
                 try:
+                    from processing.diarizer import Diarizer
                     diarizer = Diarizer()
                     diarization = diarizer.diarize(processed_audio)
                     merged_transcript = diarizer.merge_with_transcript(transcript, diarization)
@@ -135,8 +129,8 @@ def record_mic(
     """Record audio from microphone."""
     console.print("\n[bold blue]🎤 Starting microphone recording...[/bold blue]")
     console.print("Press Ctrl+C to stop recording\n")
-    
-    recorder = MicRecorder()
+
+    from capture.mic_recorder import MicRecorder
     recorder.start()
     
     try:
@@ -161,8 +155,8 @@ def record_screen(
     """Record screen with audio."""
     console.print("\n[bold blue]🎬 Starting screen recording...[/bold blue]")
     console.print("Press Ctrl+C to stop recording\n")
-    
-    recorder = ScreenRecorder()
+
+    from capture.screen_recorder import ScreenRecorder
     output_path = recorder.start(output)
     
     try:
@@ -181,6 +175,8 @@ def list_meetings(
     limit: int = typer.Option(10, "--limit", "-n", help="Number of meetings to show"),
 ):
     """List recent meetings."""
+    from storage.database import Database
+
     db = Database()
     meetings = db.list_meetings(limit=limit)
     

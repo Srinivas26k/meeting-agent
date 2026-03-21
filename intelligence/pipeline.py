@@ -57,13 +57,27 @@ class IntelligencePipeline:
     async def process(self, transcript: str) -> MeetingIntelligence:
         """
         Run all intelligence chains in parallel.
-        
+
         Args:
             transcript: Full meeting transcript text
-            
+
         Returns:
             Complete meeting intelligence
         """
+        if not transcript or not transcript.strip():
+            print("⚠️  Empty transcript — skipping LLM extraction")
+            return MeetingIntelligence(
+                summary=MeetingSummary(
+                    title="Untitled Meeting",
+                    summary="No speech detected in the recording.",
+                    key_points=[],
+                    participants=[]
+                ),
+                action_items=[],
+                decisions=[],
+                transcript=transcript
+            )
+
         print("🧠 Running intelligence pipeline...")
         
         # Run all chains in parallel

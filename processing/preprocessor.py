@@ -33,31 +33,24 @@ class AudioPreprocessor:
         
         print(f"🔧 Preprocessing audio: {input_path.name}")
         
-        # Build ffmpeg command
+        # Build ffmpeg command: extract audio, resample to 16kHz mono
         stream = ffmpeg.input(str(input_path))
-        
-        # Extract audio, resample to 16kHz mono
         stream = stream.audio
-        
-        # Apply filters
-        filters = []
+
+        # Apply normalization if requested (skip loudnorm — requires 2-pass)
+        # Use simpler volume normalization instead
         if normalize:
-            filters.append('loudnorm')  # Normalize audio levels
-        
-        if filters:
-            stream = stream.filter(*filters)
-        
-        # Output configuration
+            stream = stream.filter('acompressor')
+
         stream = ffmpeg.output(
             stream,
             str(output_path),
-            acodec='pcm_s16le',  # 16-bit PCM
-            ac=self.channels,  # Mono
-            ar=self.sample_rate,  # 16kHz
+            acodec='pcm_s16le',
+            ac=self.channels,
+            ar=self.sample_rate,
             loglevel='error'
         )
-        
-        # Run ffmpeg
+
         ffmpeg.run(stream, overwrite_output=True, quiet=True)
         
         print(f"✅ Preprocessed audio saved: {output_path.name}")
