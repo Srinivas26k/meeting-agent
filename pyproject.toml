@@ -10,15 +10,11 @@ dependencies = [
     "ffmpeg-python>=0.2.0",
     "soundcard>=0.4.2",
     "pydub>=0.25.1",
-
-    # ── STT — faster-whisper (NOT openai-whisper) ──────────────────────────
-    # CTranslate2 backend: 4-6x faster, int8 CPU quantization, VAD built-in.
-    # distil-large-v3 is the recommended default model.
-    "faster-whisper>=1.0.3",
-
+    # ── STT — openai-whisper ───────────────────────────────────────────────
+    # Official openai-whisper for maximum compatibility (using small model)
+    "openai-whisper",
     # ── hardware detection (for auto model selection) ──────────────────────
     "psutil>=5.9.0",
-
     # ── intelligence layer ─────────────────────────────────────────────────
     "langchain>=0.3.0",
     "langchain-core>=0.3.0",
@@ -26,30 +22,26 @@ dependencies = [
     "langchain-openai>=0.2.0",
     "langchain-ollama>=0.2.0",
     "pydantic>=2.0.0",
-
     # ── async safety in Celery / threads ──────────────────────────────────
     "nest-asyncio>=1.6.0",
-
     # ── storage ────────────────────────────────────────────────────────────
     "sqlmodel>=0.0.21",
-
     # ── delivery ───────────────────────────────────────────────────────────
     "jinja2>=3.1.0",
     "aiosmtplib>=3.0.0",
-
     # ── API + background tasks ─────────────────────────────────────────────
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "celery>=5.4.0",
     "redis>=5.0.0",
-
     # ── CLI ────────────────────────────────────────────────────────────────
     "typer>=0.12.0",
     "rich>=13.0.0",
-
     # ── utils ──────────────────────────────────────────────────────────────
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.0",
+    "noisereduce>=3.0.3",
+    "faster-whisper>=1.2.1",
 ]
 
 [project.optional-dependencies]

@@ -132,7 +132,7 @@ class StatusPill(tk.Label):
             padx=6, pady=2,
         )
 
-    def update(self, text):
+    def set_text(self, text):
         self.config(text=f"● {text}")
 
 
@@ -153,9 +153,10 @@ class MeetingWidget:
         self.recording    = False
         self.mode         = tk.StringVar(value="screen")
         self.recorder     = None
-        self.timer_thread = None
+        self._timer_id    = None
         self.output_path  = None
         self.intelligence = None
+        self._transcript_text_cache = None
         self._drag_x = self._drag_y = 0
         self._current_view = "main"   # main | transcript | result
 
@@ -418,6 +419,13 @@ class MeetingWidget:
     # ── recording ─────────────────────────────────────────────────────────────
 
     def _toggle_recording(self):
+        # Debounce: ignore clicks within 500ms of the last toggle
+        import time as _time
+        now = _time.monotonic()
+        if now - getattr(self, '_last_toggle_time', 0) < 0.5:
+            return
+        self._last_toggle_time = now
+
         if self.recording:
             self._stop_recording()
         else:
@@ -426,6 +434,7 @@ class MeetingWidget:
     def _start_recording(self):
         mode = self.mode.get()
         ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.timer_lbl.config(text="00:00")
         try:
             if mode == "screen":
                 from capture.screen_recorder import ScreenRecorder
@@ -434,15 +443,17 @@ class MeetingWidget:
             elif mode == "mic":
                 from capture.mic_recorder import MicRecorder
                 self.recorder   = MicRecorder()
-                self.recorder.start()
-                self.output_path = Path(f"recording_mic_{ts}.wav")
+                self.output_path = self.recorder.start(f"recording_mic_{ts}.wav")
             elif mode == "system":
                 from capture.system_audio import SystemAudioRecorder
                 self.recorder   = SystemAudioRecorder()
                 self.recorder.start()
                 self.output_path = Path(f"recording_system_{ts}.wav")
         except Exception as ex:
-            messagebox.showerror("Recording Error", str(ex))
+            err_msg = str(ex)
+            if len(err_msg) > 150:
+                err_msg = err_msg[:150] + "...\n(Check terminal for full error)"
+            messagebox.showerror("Recording Error", err_msg)
             return
 
         self.recording = True
@@ -453,13 +464,22 @@ class MeetingWidget:
         self.sub_lbl.config(text="Recording in progress…")
         self._updated_lbl.config(text="live")
 
-        self.timer_thread = _TimerThread(self._tick_timer)
-        self.timer_thread.start()
+        self.recording_start_time = time.time()
+        self._update_timer_loop()
+
+    def _update_timer_loop(self):
+        if not self.recording:
+            return
+        elapsed = int(time.time() - self.recording_start_time)
+        m, s = divmod(elapsed, 60)
+        self.timer_lbl.config(text=f"{m:02d}:{s:02d}")
+        self._timer_id = self.root.after(1000, self._update_timer_loop)
 
     def _stop_recording(self):
         self.recording = False
-        if self.timer_thread:
-            self.timer_thread.stop()
+        if getattr(self, '_timer_id', None):
+            self.root.after_cancel(self._timer_id)
+            self._timer_id = None
         self._rec_dot.stop()
         try:
             if self.mode.get() == "screen":
@@ -472,12 +492,12 @@ class MeetingWidget:
         self.rec_btn.update_text("⏺  Record")
         self.rec_btn.update_color(ACCENT)
         self._set_status("Saved", ACCENT)
-        self.sub_lbl.config(
-            text=f"Saved: {Path(self.output_path).name}" if self.output_path else "Stopped")
+        if self.output_path:
+            out_path = Path(self.output_path)
+            self.sub_lbl.config(text=f"Saved: {out_path.name} · {out_path.parent}")
+        else:
+            self.sub_lbl.config(text="Stopped")
         self._updated_lbl.config(text="just now")
-
-    def _tick_timer(self, val: str):
-        self.root.after(0, lambda: self.timer_lbl.config(text=val))
 
     # ── processing ────────────────────────────────────────────────────────────
 
@@ -506,41 +526,54 @@ class MeetingWidget:
 
             self._set_prog("Transcribing…")
             transcript = Transcriber().transcribe(audio)
+            self._transcript_text_cache = transcript.get('text', '')
 
             self._set_prog("Extracting intelligence…")
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            intel = loop.run_until_complete(
-                IntelligencePipeline().process(transcript['text']))
-            loop.close()
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                intel = loop.run_until_complete(
+                    IntelligencePipeline().process(transcript['text']))
+                loop.close()
+            except Exception as exc:
+                self.root.after(0, lambda: self._show_transcript_after_processing(
+                    f"Transcript ready (intelligence unavailable: {exc})"
+                ))
+                return
 
             self.intelligence = intel
             self._transcript_text_cache = transcript['text']
 
-            db = Database()
-            db.create_meeting({
-                'title':            intel.summary.title,
-                'participants':     intel.summary.participants,
-                'duration_minutes': intel.summary.duration_minutes,
-                'audio_file_path':  str(self.output_path),
-                'transcript':       intel.transcript,
-                'summary':          intel.summary.summary,
-                'key_points':       intel.summary.key_points,
-                'action_items':     [i.model_dump() for i in intel.action_items],
-                'decisions':        [d.model_dump() for d in intel.decisions],
-            })
+            # Save to DB — don't let a DB failure freeze the UI
+            try:
+                db = Database()
+                db.create_meeting({
+                    'title':            intel.summary.title,
+                    'participants':     intel.summary.participants,
+                    'duration_minutes': intel.summary.duration_minutes,
+                    'audio_file_path':  str(self.output_path),
+                    'transcript':       intel.transcript,
+                    'summary':          intel.summary.summary,
+                    'key_points':       intel.summary.key_points,
+                    'action_items':     [i.model_dump() for i in intel.action_items],
+                    'decisions':        [d.model_dump() for d in intel.decisions],
+                })
+            except Exception:
+                pass  # DB failure should not prevent UI from completing
 
-            # cleanup temp file
+            # Cleanup temp file
             try:
                 processed = path.parent / f"{path.stem}_processed.wav"
                 processed.unlink(missing_ok=True)
             except Exception:
                 pass
 
+            # Always show result — schedule on main thread
             self.root.after(0, lambda: self._show_result(intel))
 
         except Exception as ex:
             self.root.after(0, lambda: self._show_error(str(ex)))
+
 
     def _show_result(self, intel):
         self._stop_progress_anim()
@@ -551,17 +584,27 @@ class MeetingWidget:
         if len(intel.summary.summary) > 120:
             summary_short += "…"
         self.result_body.config(text=summary_short)
-        self._items_pill.update(f"{len(intel.action_items)} actions")
-        self._dec_pill.update(f"{len(intel.decisions)} decisions")
+        self._items_pill.set_text(f"{len(intel.action_items)} actions")
+        self._dec_pill.set_text(f"{len(intel.decisions)} decisions")
         self.result_card.pack(fill="x", pady=(0, 6))
         self._set_status("Done", ACCENT)
         self.sub_lbl.config(text="Processing complete")
+
+    def _show_transcript_after_processing(self, status_msg: str):
+        self._stop_progress_anim()
+        self.progress_card.pack_forget()
+        self._set_status("Transcript ready", ACCENT)
+        self.sub_lbl.config(text=status_msg)
+        self._show_transcript()
 
     def _show_error(self, msg):
         self._stop_progress_anim()
         self.progress_card.pack_forget()
         self._set_status(f"Error", RED)
-        messagebox.showerror("Processing failed", msg)
+        err_msg = str(msg)
+        if len(err_msg) > 150:
+            err_msg = err_msg[:150] + "...\n(Check terminal for full error)"
+        messagebox.showerror("Processing failed", err_msg)
 
     # ── transcript view ───────────────────────────────────────────────────────
 
@@ -715,26 +758,6 @@ class MeetingWidget:
 
     def run(self):
         self.root.mainloop()
-
-
-class _TimerThread(threading.Thread):
-    def __init__(self, cb):
-        super().__init__(daemon=True)
-        self.cb = cb
-        self._running = False
-
-    def run(self):
-        self._running = True
-        t0 = time.time()
-        while self._running:
-            e = int(time.time() - t0)
-            m, s = divmod(e, 60)
-            self.cb(f"{m:02d}:{s:02d}")
-            time.sleep(1)
-
-    def stop(self):
-        self._running = False
-
 
 def main():
     root = Path(__file__).parent.parent

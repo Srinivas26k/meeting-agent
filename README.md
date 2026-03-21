@@ -5,7 +5,7 @@ AI-powered meeting transcription and intelligence extraction system. Automatical
 ## Features
 
 - **Multi-source capture**: Record from microphone, screen, system audio, or upload files
-- **High-quality transcription**: Uses faster-whisper with distil-large-v3 for accurate, CPU-friendly transcription
+- **High-quality transcription**: Uses openai-whisper for accurate, highly-compatible transcription
 - **Speaker diarization**: Identifies who said what using pyannote-audio
 - **Intelligence extraction**: Automatically extracts summaries, action items, and decisions using LLMs
 - **Multiple outputs**: Save to SQLite, Notion, Obsidian, or send via email
@@ -126,6 +126,51 @@ meeting-agent serve
 
 Then visit http://localhost:8000/docs for API documentation.
 
+
+## Widget (Desktop Overlay)
+
+Run the floating widget:
+
+```bash
+uv run meeting-widget
+```
+
+### Widget recording modes
+
+- **Screen**: records desktop + default audio device through ffmpeg.
+- **Mic**: records microphone through PortAudio (`sounddevice`).
+- **System**: records loopback/system output (`soundcard`) if your OS/driver supports it.
+
+If a mode is unavailable, the widget now surfaces a clear runtime error instead of hanging.
+
+### Where files are stored
+
+Recordings are written to the current working directory where you launch `meeting-widget`.
+The widget status line shows both filename and parent directory after stop.
+
+## Build / distribute to users
+
+Use PyInstaller to ship a single executable.
+
+```bash
+# install tooling
+uv pip install pyinstaller
+
+# build widget executable
+pyinstaller --onefile --name meeting-widget widget/app.py
+```
+
+Output binary location:
+- macOS/Linux: `dist/meeting-widget`
+- Windows: `dist/meeting-widget.exe`
+
+### Runtime dependencies by platform
+
+- **All platforms**: `ffmpeg` must be installed and on PATH for screen capture.
+- **Windows**: audio devices + PortAudio backend required.
+- **macOS**: grant Microphone + Screen Recording permissions in System Settings.
+- **Linux**: PulseAudio/PipeWire recommended; system loopback may need monitor/virtual sink.
+
 ## Usage Examples
 
 ### CLI Processing
@@ -205,7 +250,7 @@ stt:
 ### Low-end hardware
 ```yaml
 stt:
-  model: "tiny"  # or "base"
+  model: "small"  # or "base"
   device: "cpu"
   compute_type: "int8"
 ```
@@ -353,7 +398,7 @@ Using Claude Haiku or GPT-4o-mini:
 ### "No module named 'faster_whisper'"
 
 ```bash
-pip install faster-whisper
+pip install openai-whisper
 ```
 
 ### "HuggingFace token required"
@@ -372,7 +417,7 @@ Install ffmpeg (see Installation section)
 Try a smaller model:
 ```yaml
 stt:
-  model: "base"  # or "tiny"
+  model: "base"  # or "small"
 ```
 
 ## Roadmap
@@ -397,7 +442,7 @@ MIT License - see LICENSE file
 ## Credits
 
 Built with:
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) - STT
+- [openai-whisper](https://github.com/openai/whisper) - STT
 - [pyannote-audio](https://github.com/pyannote/pyannote-audio) - Diarization
 - [LangChain](https://github.com/langchain-ai/langchain) - LLM orchestration
 - [FastAPI](https://fastapi.tiangolo.com/) - API framework

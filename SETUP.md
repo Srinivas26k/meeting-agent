@@ -126,7 +126,7 @@ Cost: ~$0.05-0.10 per hour-long meeting with Claude Haiku
 # Choose STT model based on your hardware
 stt:
   model: "distil-large-v3"  # Good balance
-  # model: "tiny"           # Fast, lower accuracy
+  # model: "small"           # Fast, lower accuracy
   # model: "large-v3-turbo" # Best accuracy, needs GPU
 
 # Choose LLM provider
@@ -220,7 +220,7 @@ docker-compose down
 ### "No module named 'faster_whisper'"
 
 ```bash
-pip install faster-whisper
+pip install openai-whisper
 ```
 
 ### "Could not load model"
@@ -259,7 +259,7 @@ sudo systemctl start redis
 Try a smaller model in `config.yaml`:
 ```yaml
 stt:
-  model: "base"  # or "tiny"
+  model: "base"  # or "small"
 ```
 
 ### Out of memory

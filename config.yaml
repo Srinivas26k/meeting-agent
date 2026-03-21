@@ -8,7 +8,7 @@
 # Leave model: null to auto-detect based on available RAM + CUDA.
 #
 # Manual options (faster-whisper model sizes):
-#   tiny            ~39M params   — any device, lowest accuracy
+#   small            ~39M params   — any device, lowest accuracy
 #   base            ~74M params   — low-end CPU (2 GB RAM)
 #   small           ~244M params  — mid CPU (4 GB RAM)
 #   distil-large-v3 ~756M params  — recommended CPU (8 GB RAM), 6x faster than large-v3
