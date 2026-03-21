@@ -1,70 +1,85 @@
 # Meeting Agent Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# ${ENV_VAR} placeholders are resolved at runtime by the config loader.
+# All secrets should live in .env — never hardcode them here.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# STT Model Selection
-# openai-whisper models: tiny, base, small, medium, large, turbo
-# tiny  ~39M params  - fastest, runs on any device
-# base  ~74M params  - good balance for low-end hardware
-# small ~244M params - better accuracy, still CPU-friendly
-# turbo ~809M params - best accuracy
+# ── STT model ─────────────────────────────────────────────────────────────────
+# Leave model: null to auto-detect based on available RAM + CUDA.
+#
+# Manual options (faster-whisper model sizes):
+#   tiny            ~39M params   — any device, lowest accuracy
+#   base            ~74M params   — low-end CPU (2 GB RAM)
+#   small           ~244M params  — mid CPU (4 GB RAM)
+#   distil-large-v3 ~756M params  — recommended CPU (8 GB RAM), 6x faster than large-v3
+#   large-v3-turbo  ~809M params  — GPU recommended
+#
 stt:
-  model: "tiny"   # Default: runs on any device
-  language: null  # null for auto-detect, or specify: en, es, fr, etc.
-  word_timestamps: false  # Set true for word-level timestamps (slower)
+  model: null           # null = auto-detect (recommended)
+  device: null          # null = auto-detect (cpu or cuda)
+  compute_type: null    # null = auto-detect (int8 for cpu, float16 for cuda)
+  language: null        # null = auto-detect; or: en, hi, es, fr, de, ja, ar, pt, zh …
+  word_timestamps: true # required for speaker diarization merge
 
-# Speaker Diarization
+# ── Speaker diarization ───────────────────────────────────────────────────────
 diarization:
   enabled: true
-  min_speakers: null  # null for auto-detect
+  min_speakers: null    # null = auto-detect
   max_speakers: null
 
-# LLM Provider
+# ── LLM provider ──────────────────────────────────────────────────────────────
+# granite4:350m specs:
+#   - Context window : 32 768 tokens  (handles ~4 hr meetings without chunking)
+#   - Tool-calling   : supported      (with_structured_output works)
+#   - Languages      : 12 including EN, DE, ES, FR, JA, PT, AR, ZH, KO, IT, NL, CS
+#
 llm:
-  provider: "ollama"        # Options: ollama, anthropic, openai
-  model: "granite4:350m"    # Local model — no API key needed
-  temperature: 0.3
-  max_tokens: 4000
+  provider: "ollama"
+  model: "granite4:350m"
+  temperature: 0.1       # low = consistent structured JSON output
+  max_tokens: 8000       # output cap; 8k handles 20+ action items safely
 
-# API Keys (or use environment variables)
+# ── API keys (prefer .env over this file) ─────────────────────────────────────
 api_keys:
-  anthropic: ${ANTHROPIC_API_KEY}
-  openai: ${OPENAI_API_KEY}
-  huggingface: ${HF_TOKEN}  # Required for pyannote
+  anthropic:   ${ANTHROPIC_API_KEY}
+  openai:      ${OPENAI_API_KEY}
+  huggingface: ${HF_TOKEN}
 
-# Storage
+# ── Storage ───────────────────────────────────────────────────────────────────
 storage:
   database: "sqlite:///meetings.db"
-  
-# Integrations
+
+# ── Integrations ──────────────────────────────────────────────────────────────
 integrations:
   notion:
     enabled: false
-    token: ${NOTION_TOKEN}
+    token:       ${NOTION_TOKEN}
     database_id: ${NOTION_DATABASE_ID}
-  
+
   obsidian:
     enabled: false
     vault_path: "~/Documents/Obsidian/Meetings"
-  
+
   email:
     enabled: true
-    smtp_host: "smtp.gmail.com"
-    smtp_port: 587
-    username: ${EMAIL_USERNAME}
-    password: ${EMAIL_APP_PASSWORD}
+    smtp_host:    "smtp.gmail.com"
+    smtp_port:    587
+    username:     ${EMAIL_USERNAME}
+    password:     ${EMAIL_APP_PASSWORD}
     from_address: ${EMAIL_FROM}
 
-# Processing
+# ── Audio processing ──────────────────────────────────────────────────────────
 processing:
   audio_sample_rate: 16000
   audio_channels: 1
   vad_threshold: 0.5
-  
-# Background Tasks
+
+# ── Background tasks (Celery + Redis) ─────────────────────────────────────────
 celery:
-  broker_url: "redis://localhost:6379/0"
+  broker_url:     "redis://localhost:6379/0"
   result_backend: "redis://localhost:6379/0"
 
-# API Server
+# ── API server ────────────────────────────────────────────────────────────────
 api:
   host: "0.0.0.0"
   port: 8000
