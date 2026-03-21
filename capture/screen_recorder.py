@@ -1,6 +1,7 @@
 """Screen recording with audio using ffmpeg."""
 import subprocess
 import platform
+import time
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -89,6 +90,14 @@ class ScreenRecorder:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
+
+        # Validate ffmpeg didn't fail immediately (bad device names, missing perms)
+        time.sleep(0.3)
+        if self.process.poll() is not None:
+            _, stderr = self.process.communicate(timeout=2)
+            msg = stderr.decode(errors="ignore").strip() or "Unknown ffmpeg startup failure"
+            self.process = None
+            raise RuntimeError(f"Screen recording failed to start: {msg}")
         
         print(f"🎬 Screen recording started: {self.output_path}")
         return self.output_path
@@ -106,6 +115,10 @@ class ScreenRecorder:
         # Send SIGINT to gracefully stop ffmpeg
         self.process.send_signal(signal.SIGINT)
         self.process.wait(timeout=10)
+
+        if self.process.returncode not in (0, 255):
+            stderr = self.process.stderr.read().decode(errors="ignore") if self.process.stderr else ""
+            raise RuntimeError(f"ffmpeg exited with code {self.process.returncode}: {stderr}")
         
         print(f"✅ Screen recording saved to {self.output_path}")
         

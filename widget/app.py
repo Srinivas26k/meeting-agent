@@ -156,6 +156,7 @@ class MeetingWidget:
         self.timer_thread = None
         self.output_path  = None
         self.intelligence = None
+        self._transcript_text_cache = None
         self._drag_x = self._drag_y = 0
         self._current_view = "main"   # main | transcript | result
 
@@ -426,6 +427,7 @@ class MeetingWidget:
     def _start_recording(self):
         mode = self.mode.get()
         ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.timer_lbl.config(text="00:00")
         try:
             if mode == "screen":
                 from capture.screen_recorder import ScreenRecorder
@@ -472,8 +474,11 @@ class MeetingWidget:
         self.rec_btn.update_text("⏺  Record")
         self.rec_btn.update_color(ACCENT)
         self._set_status("Saved", ACCENT)
-        self.sub_lbl.config(
-            text=f"Saved: {Path(self.output_path).name}" if self.output_path else "Stopped")
+        if self.output_path:
+            out_path = Path(self.output_path)
+            self.sub_lbl.config(text=f"Saved: {out_path.name} · {out_path.parent}")
+        else:
+            self.sub_lbl.config(text="Stopped")
         self._updated_lbl.config(text="just now")
 
     def _tick_timer(self, val: str):
@@ -506,13 +511,20 @@ class MeetingWidget:
 
             self._set_prog("Transcribing…")
             transcript = Transcriber().transcribe(audio)
+            self._transcript_text_cache = transcript.get('text', '')
 
             self._set_prog("Extracting intelligence…")
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            intel = loop.run_until_complete(
-                IntelligencePipeline().process(transcript['text']))
-            loop.close()
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                intel = loop.run_until_complete(
+                    IntelligencePipeline().process(transcript['text']))
+                loop.close()
+            except Exception as exc:
+                self.root.after(0, lambda: self._show_transcript_after_processing(
+                    f"Transcript ready (intelligence unavailable: {exc})"
+                ))
+                return
 
             self.intelligence = intel
             self._transcript_text_cache = transcript['text']
@@ -556,6 +568,13 @@ class MeetingWidget:
         self.result_card.pack(fill="x", pady=(0, 6))
         self._set_status("Done", ACCENT)
         self.sub_lbl.config(text="Processing complete")
+
+    def _show_transcript_after_processing(self, status_msg: str):
+        self._stop_progress_anim()
+        self.progress_card.pack_forget()
+        self._set_status("Transcript ready", ACCENT)
+        self.sub_lbl.config(text=status_msg)
+        self._show_transcript()
 
     def _show_error(self, msg):
         self._stop_progress_anim()

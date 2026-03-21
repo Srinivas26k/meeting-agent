@@ -131,6 +131,7 @@ def record_mic(
     console.print("Press Ctrl+C to stop recording\n")
 
     from capture.mic_recorder import MicRecorder
+    recorder = MicRecorder()
     recorder.start()
     
     try:
@@ -157,6 +158,7 @@ def record_screen(
     console.print("Press Ctrl+C to stop recording\n")
 
     from capture.screen_recorder import ScreenRecorder
+    recorder = ScreenRecorder()
     output_path = recorder.start(output)
     
     try:

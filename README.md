@@ -126,6 +126,51 @@ meeting-agent serve
 
 Then visit http://localhost:8000/docs for API documentation.
 
+
+## Widget (Desktop Overlay)
+
+Run the floating widget:
+
+```bash
+uv run meeting-widget
+```
+
+### Widget recording modes
+
+- **Screen**: records desktop + default audio device through ffmpeg.
+- **Mic**: records microphone through PortAudio (`sounddevice`).
+- **System**: records loopback/system output (`soundcard`) if your OS/driver supports it.
+
+If a mode is unavailable, the widget now surfaces a clear runtime error instead of hanging.
+
+### Where files are stored
+
+Recordings are written to the current working directory where you launch `meeting-widget`.
+The widget status line shows both filename and parent directory after stop.
+
+## Build / distribute to users
+
+Use PyInstaller to ship a single executable.
+
+```bash
+# install tooling
+uv pip install pyinstaller
+
+# build widget executable
+pyinstaller --onefile --name meeting-widget widget/app.py
+```
+
+Output binary location:
+- macOS/Linux: `dist/meeting-widget`
+- Windows: `dist/meeting-widget.exe`
+
+### Runtime dependencies by platform
+
+- **All platforms**: `ffmpeg` must be installed and on PATH for screen capture.
+- **Windows**: audio devices + PortAudio backend required.
+- **macOS**: grant Microphone + Screen Recording permissions in System Settings.
+- **Linux**: PulseAudio/PipeWire recommended; system loopback may need monitor/virtual sink.
+
 ## Usage Examples
 
 ### CLI Processing

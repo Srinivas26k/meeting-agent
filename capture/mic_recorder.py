@@ -16,6 +16,24 @@ class MicRecorder:
         self.recording = []
         self.is_recording = False
         self.stream: Optional[sd.InputStream] = None
+
+    @staticmethod
+    def check_input_available() -> None:
+        """Raise a clear error when PortAudio/input device is unavailable."""
+        try:
+            devices = sd.query_devices()
+        except Exception as exc:
+            raise RuntimeError(
+                "PortAudio/audio backend is not available. "
+                "Install system audio drivers/libraries and retry."
+            ) from exc
+
+        if not devices:
+            raise RuntimeError("No audio devices detected.")
+
+        has_input = any(d.get("max_input_channels", 0) > 0 for d in devices)
+        if not has_input:
+            raise RuntimeError("No input microphone device found.")
     
     def _audio_callback(self, indata, frames, time, status):
         """Callback for audio stream."""
@@ -26,15 +44,20 @@ class MicRecorder:
     
     def start(self):
         """Start recording from microphone."""
+        self.check_input_available()
         self.recording = []
         self.is_recording = True
-        self.stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=self.channels,
-            callback=self._audio_callback,
-            dtype=np.float32
-        )
-        self.stream.start()
+        try:
+            self.stream = sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=self.channels,
+                callback=self._audio_callback,
+                dtype=np.float32,
+            )
+            self.stream.start()
+        except Exception as exc:
+            self.is_recording = False
+            raise RuntimeError(f"Microphone capture failed: {exc}") from exc
         print(f"🎤 Recording started (sample rate: {self.sample_rate}Hz)")
     
     def stop(self, output_path: Optional[str] = None) -> Path:
