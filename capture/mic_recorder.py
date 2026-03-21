@@ -1,7 +1,10 @@
-"""Live microphone recording via ffmpeg + PulseAudio.
+"""Live microphone recording via ffmpeg + ALSA (Linux).
 
-Uses ffmpeg -f pulse (same path as screen recorder) for clean, studio-quality
-capture without Python audio-driver float32 artifacts.
+Uses ffmpeg -f alsa to write directly to the kernel audio driver,
+bypassing the PulseAudio software mixer layer for the cleanest
+possible capture path on Linux.
+
+Falls back to PulseAudio (-f pulse) if ALSA is unavailable.
 """
 import os
 import signal
@@ -12,56 +15,106 @@ from pathlib import Path
 from typing import Optional
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# ── ALSA device detection ─────────────────────────────────────────────────────
 
-def _pulse_default_source() -> str:
-    """Return the PulseAudio default source name, falling back to 'default'."""
+def _detect_alsa_mic() -> Optional[str]:
+    """
+    Parse `arecord -l` to find the first capture device.
+    Returns an ALSA device string like 'hw:1,0', or None if not found.
+    """
+    try:
+        out = subprocess.check_output(
+            ["arecord", "-l"], stderr=subprocess.DEVNULL, text=True
+        )
+        for line in out.splitlines():
+            line = line.strip()
+            if line.startswith("card "):
+                # Example: "card 1: Generic [HD-Audio Generic], device 0: ..."
+                parts = line.split(":")
+                card_num = parts[0].split()[1]
+                dev_part = parts[1].split(",")[1].strip()  # "device 0: ..."
+                dev_num  = dev_part.split()[1]
+                return f"hw:{card_num},{dev_num}"
+    except Exception:
+        pass
+    return None
+
+
+def _best_audio_source():
+    """
+    Return (ffmpeg_format, device) for the cleanest available audio source.
+    Prefers ALSA (direct kernel), falls back to PulseAudio.
+    """
+    alsa_dev = _detect_alsa_mic()
+    if alsa_dev:
+        # Verify ALSA device actually opens without error
+        try:
+            test = subprocess.run(
+                ["ffmpeg", "-f", "alsa", "-i", alsa_dev, "-t", "0.1",
+                 "-f", "null", "-"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=3,
+            )
+            if test.returncode == 0 or test.returncode == 255:
+                return "alsa", alsa_dev
+        except Exception:
+            pass
+
+    # Fallback: PulseAudio
     try:
         out = subprocess.check_output(
             ["pactl", "get-default-source"], stderr=subprocess.DEVNULL, text=True
         ).strip()
-        return out or "default"
+        return "pulse", out or "default"
     except Exception:
-        return "default"
+        return "pulse", "default"
 
 
 # ── recorder ─────────────────────────────────────────────────────────────────
 
 class MicRecorder:
-    """Record audio from the default microphone using ffmpeg PulseAudio capture.
+    """Record audio using ffmpeg ALSA (direct kernel) or PulseAudio fallback.
 
-    Uses the same ffmpeg subprocess approach as ScreenRecorder, bypassing
-    soundcard's float32 DC-bias issues on Linux drivers.
+    ALSA bypasses the PulseAudio software mixer so there are no extra
+    resampling or mixing artefacts. The ALC285 chip's inherent DC bias is
+    then removed by the AudioPreprocessor before transcription.
     """
 
     def __init__(self, sample_rate: int = 44100, channels: int = 1):
         self.sample_rate = sample_rate
-        self.channels = channels
+        self.channels    = channels
+        self._fmt, self._src = _best_audio_source()
         self._process: Optional[subprocess.Popen] = None
         self._output_path: Optional[Path] = None
 
     # ── internal ─────────────────────────────────────────────────────────────
 
     def _build_command(self, output_path: str) -> list:
-        source = _pulse_default_source()
-        return [
+        cmd = [
             "ffmpeg",
             "-nostdin",
-            "-f",      "pulse",
-            "-i",      source,
+            "-f",      self._fmt,
+            "-i",      self._src,
             "-ar",     str(self.sample_rate),
             "-ac",     str(self.channels),
-            "-acodec", "pcm_s16le",   # uncompressed 16-bit LE (lossless WAV)
-            # High-pass @80Hz removes mic rumble; mild compressor levels voice
-            "-af",     "highpass=f=80,acompressor=threshold=0.1:ratio=2:attack=5:release=50",
-            "-y",
-            output_path,
+            "-acodec", "pcm_s16le",   # uncompressed 16-bit — no lossy artefacts
         ]
+
+        if self._fmt == "alsa":
+            # High-pass @80Hz removes sub-bass rumble from the ALC285 capsule;
+            # gentle compressor keeps voice consistent without boosting noise floor.
+            cmd += ["-af", "highpass=f=80,acompressor=threshold=0.1:ratio=2:attack=5:release=50"]
+        else:
+            # PulseAudio path — same filters still help
+            cmd += ["-af", "highpass=f=80,acompressor=threshold=0.1:ratio=2:attack=5:release=50"]
+
+        cmd += ["-y", output_path]
+        return cmd
 
     # ── public API ────────────────────────────────────────────────────────────
 
     def start(self, output_path: Optional[str] = None) -> Path:
-        """Start recording. Returns the path the file will be saved to."""
+        """Start recording. Returns the path the WAV will be written to."""
         if self._process is not None:
             raise RuntimeError("Recording already in progress")
 
@@ -78,7 +131,6 @@ class MicRecorder:
             stderr=subprocess.PIPE,
         )
 
-        # Give ffmpeg a moment to open the device; fail fast on misconfiguration
         time.sleep(0.4)
         if self._process.poll() is not None:
             _, stderr = self._process.communicate(timeout=2)
@@ -86,16 +138,17 @@ class MicRecorder:
             msg = stderr.decode(errors="ignore").strip()
             raise RuntimeError(f"Mic recording failed to start: {msg}")
 
-        print(f"🎤 Recording started (sample rate: {self.sample_rate}Hz, source: {_pulse_default_source()})")
+        backend = f"ALSA ({self._src})" if self._fmt == "alsa" else f"PulseAudio ({self._src})"
+        print(f"🎤 Recording started (sample rate: {self.sample_rate}Hz, backend: {backend})")
         return self._output_path
 
     def stop(self, output_path: Optional[str] = None) -> Path:
-        """Stop recording, flush WAV, and return the saved file path."""
+        """Stop recording, flush WAV header, return the saved file path."""
         proc = self._process
         if proc is None:
             raise RuntimeError("No recording in progress")
 
-        # SIGINT tells ffmpeg to flush correctly and write a valid WAV header
+        # SIGINT → ffmpeg flushes the RIFF header properly
         proc.send_signal(signal.SIGINT)
         try:
             proc.wait(timeout=10)
@@ -114,15 +167,13 @@ class MicRecorder:
         self._output_path = None
 
         if out is None or not out.exists():
-            raise RuntimeError("Recording file was not created by ffmpeg")
+            raise RuntimeError("Recording file was not created")
 
         print(f"✅ Recording saved to {out}")
         return out
 
-    # ── compat shims ──────────────────────────────────────────────────────────
-
     def pause(self):
-        print("⏸️  Pause requested — ffmpeg backend does not support pause (recording continues)")
+        print("⏸️  Pause not supported by ffmpeg backend — recording continues")
 
     def resume(self):
-        print("▶️  Resume requested — recording was never paused")
+        print("▶️  Recording was never paused")
