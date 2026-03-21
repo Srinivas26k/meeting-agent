@@ -18,7 +18,7 @@ import soundcard as sc
 class SystemAudioRecorder:
     """Record system audio (loopback) from speakers."""
     
-    def __init__(self, sample_rate: int = 48000):
+    def __init__(self, sample_rate: int = 44100):
         self.sample_rate = sample_rate
         self.recording = []
         self.is_recording = False
@@ -113,6 +113,15 @@ class SystemAudioRecorder:
         
         # Concatenate all recorded chunks
         audio_data = np.concatenate(self.recording, axis=0)
+
+        # ── Audio cleanup ─────────────────────────────────────────────────
+        # Remove DC offset injected by the driver
+        audio_data = audio_data - audio_data.mean(axis=0)
+
+        # Soft normalise to 90% peak
+        peak = np.abs(audio_data).max()
+        if peak > 0.01:
+            audio_data = audio_data / peak * 0.90
         
         # Generate output path if not provided
         if output_path is None:

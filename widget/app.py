@@ -132,7 +132,7 @@ class StatusPill(tk.Label):
             padx=6, pady=2,
         )
 
-    def update(self, text):
+    def set_text(self, text):
         self.config(text=f"● {text}")
 
 
@@ -436,8 +436,7 @@ class MeetingWidget:
             elif mode == "mic":
                 from capture.mic_recorder import MicRecorder
                 self.recorder   = MicRecorder()
-                self.recorder.start()
-                self.output_path = Path(f"recording_mic_{ts}.wav")
+                self.output_path = self.recorder.start(f"recording_mic_{ts}.wav")
             elif mode == "system":
                 from capture.system_audio import SystemAudioRecorder
                 self.recorder   = SystemAudioRecorder()
@@ -538,30 +537,36 @@ class MeetingWidget:
             self.intelligence = intel
             self._transcript_text_cache = transcript['text']
 
-            db = Database()
-            db.create_meeting({
-                'title':            intel.summary.title,
-                'participants':     intel.summary.participants,
-                'duration_minutes': intel.summary.duration_minutes,
-                'audio_file_path':  str(self.output_path),
-                'transcript':       intel.transcript,
-                'summary':          intel.summary.summary,
-                'key_points':       intel.summary.key_points,
-                'action_items':     [i.model_dump() for i in intel.action_items],
-                'decisions':        [d.model_dump() for d in intel.decisions],
-            })
+            # Save to DB — don't let a DB failure freeze the UI
+            try:
+                db = Database()
+                db.create_meeting({
+                    'title':            intel.summary.title,
+                    'participants':     intel.summary.participants,
+                    'duration_minutes': intel.summary.duration_minutes,
+                    'audio_file_path':  str(self.output_path),
+                    'transcript':       intel.transcript,
+                    'summary':          intel.summary.summary,
+                    'key_points':       intel.summary.key_points,
+                    'action_items':     [i.model_dump() for i in intel.action_items],
+                    'decisions':        [d.model_dump() for d in intel.decisions],
+                })
+            except Exception:
+                pass  # DB failure should not prevent UI from completing
 
-            # cleanup temp file
+            # Cleanup temp file
             try:
                 processed = path.parent / f"{path.stem}_processed.wav"
                 processed.unlink(missing_ok=True)
             except Exception:
                 pass
 
+            # Always show result — schedule on main thread
             self.root.after(0, lambda: self._show_result(intel))
 
         except Exception as ex:
             self.root.after(0, lambda: self._show_error(str(ex)))
+
 
     def _show_result(self, intel):
         self._stop_progress_anim()
@@ -572,8 +577,8 @@ class MeetingWidget:
         if len(intel.summary.summary) > 120:
             summary_short += "…"
         self.result_body.config(text=summary_short)
-        self._items_pill.update(f"{len(intel.action_items)} actions")
-        self._dec_pill.update(f"{len(intel.decisions)} decisions")
+        self._items_pill.set_text(f"{len(intel.action_items)} actions")
+        self._dec_pill.set_text(f"{len(intel.decisions)} decisions")
         self.result_card.pack(fill="x", pady=(0, 6))
         self._set_status("Done", ACCENT)
         self.sub_lbl.config(text="Processing complete")
