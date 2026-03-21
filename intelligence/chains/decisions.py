@@ -10,25 +10,21 @@ class DecisionList(BaseModel):
 
 
 DECISIONS_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert at identifying key decisions made during meetings.
+    ("system", """You are a meeting analyst. Extract decisions made in the transcript.
 
-Extract all significant decisions from the transcript. For each decision:
-- What was decided
-- The rationale or reasoning behind it
-- Who was involved in making the decision
-- When in the meeting it occurred (if timestamps available)
+Return a JSON object with field "items" containing an array. Each item has:
+- "decision": what was decided (string, required)
+- "rationale": why this decision was made (string, required)
+- "participants": list of people involved (array of strings)
+- "timestamp": null
 
-Focus on concrete decisions, not just discussion points.
-If there are no decisions, return an empty list."""),
-    ("user", "Meeting transcript:\n\n{transcript}")
+If no decisions were made, return {{"items": []}}.
+Return only valid JSON, no extra text."""),
+    ("user", "Transcript:\n\n{transcript}")
 ])
 
 
-def create_decisions_chain(llm):
-    return DECISIONS_PROMPT | llm.with_structured_output(DecisionList)
-
-
 async def extract_decisions(llm, transcript: str) -> List[Decision]:
-    chain = create_decisions_chain(llm)
+    chain = DECISIONS_PROMPT | llm.with_structured_output(DecisionList)
     result = await chain.ainvoke({"transcript": transcript})
     return result.items

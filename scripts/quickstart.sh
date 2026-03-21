@@ -26,15 +26,25 @@ fi
 # Check Redis
 echo "Checking Redis..."
 if command -v redis-cli &> /dev/null; then
-    if redis-cli ping &> /dev/null; then
+    if redis-cli ping &> /dev/null 2>&1; then
         echo "✅ Redis running"
     else
         echo "⚠️  Redis installed but not running"
-        echo "   Start it with: brew services start redis (macOS)"
-        echo "   Or: sudo systemctl start redis (Linux)"
+        echo "   Start it with: sudo systemctl start redis"
     fi
 else
-    echo "⚠️  Redis not found (optional for API)"
+    echo "⚠️  Redis not found (optional, only needed for API background tasks)"
+fi
+
+# Check for uv
+echo ""
+echo "Checking uv..."
+if command -v uv &> /dev/null; then
+    echo "✅ uv found"
+    USE_UV=true
+else
+    echo "⚠️  uv not found — falling back to pip inside venv"
+    USE_UV=false
 fi
 
 # Create virtual environment if it doesn't exist
@@ -53,7 +63,11 @@ source .venv/bin/activate
 # Install package
 echo ""
 echo "Installing Meeting Agent..."
-pip install -q -e .
+if [ "$USE_UV" = true ]; then
+    uv sync
+else
+    pip install -e . --quiet
+fi
 echo "✅ Installation complete"
 
 # Check for .env file

@@ -19,8 +19,8 @@ diarization:
 
 # LLM Provider
 llm:
-  provider: "anthropic"  # Options: anthropic, openai, ollama
-  model: "claude-3-5-haiku-20241022"  # or gpt-4o-mini, llama3, etc.
+  provider: "ollama"        # Options: ollama, anthropic, openai
+  model: "granite4:350m"    # Local model — no API key needed
   temperature: 0.3
   max_tokens: 4000
 
