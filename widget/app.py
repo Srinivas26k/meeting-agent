@@ -419,6 +419,13 @@ class MeetingWidget:
     # ── recording ─────────────────────────────────────────────────────────────
 
     def _toggle_recording(self):
+        # Debounce: ignore clicks within 500ms of the last toggle
+        import time as _time
+        now = _time.monotonic()
+        if now - getattr(self, '_last_toggle_time', 0) < 0.5:
+            return
+        self._last_toggle_time = now
+
         if self.recording:
             self._stop_recording()
         else:

@@ -250,7 +250,7 @@ stt:
 ### Low-end hardware
 ```yaml
 stt:
-  model: "tiny"  # or "base"
+  model: "small"  # or "base"
   device: "cpu"
   compute_type: "int8"
 ```
@@ -417,7 +417,7 @@ Install ffmpeg (see Installation section)
 Try a smaller model:
 ```yaml
 stt:
-  model: "base"  # or "tiny"
+  model: "base"  # or "small"
 ```
 
 ## Roadmap
